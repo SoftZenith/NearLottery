@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<link>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEAR Lottery</title>
+    <!-- CSS only -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-rbsA2VBKQhggwzxH7pPCaAqO46MgnOM80zW1RWuH61DGLwZJEdK2Kadq2F9CUG65" crossorigin="anonymous">
+    <!-- JavaScript Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-kenU1KFdBIe4zVF0s0G1M5b4hcpxyD9F7jL+jjXkk+Q2h455rYXK/7HAuoJl+0I4" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/near-api-js@0.43.1/dist/near-api-js.min.js"></script>
+</head>
+<body class="d-flex h-100 text-center text-bg-dark" onload="loadFunction()">
+    
+    <div class="cover-container d-flex w-100 h-100 p-3 mx-auto flex-column">
+        <header class="p-3 text-bg-dark">
+            <div class="container">
+                <div class="d-flex flex-wrap align-items-center justify-content-center justify-content-lg-start">  
+                    <div class="col-2">
+                        <h5 id="idaccount">Username here</h5>
+                    </div>              
+                    <div class="col-10 text-end">
+                        <button id="btnConnect" type="button" class="btn btn-warning">Connect wallet</button>
+                    </div>
+                </div>
+            </div>
+        </header>
+      
+        <main class="px-3">
+            <h1>Welcome to the NEAR Gambling.</h1>
+            <p class="lead">This is a NEAR blockchain game based.</p>
+
+            <br/>
+            <br/>
+
+            <div class="vstack gap-2 col-md-2 mx-auto">
+                <input id="txtNumber" type="number" class="form-control" placeholder="Your lucky number here">
+                <button id="btnPlay" type="button" class="btn btn-primary">Play</button>
+                <button id="btnBuy" type="button" class="btn btn-secondary">Buy ticket</button>
+            </div>
+                
+        </main>
+    </div>
+
+</body>
+
+<script>
+    (async () => {
+      const NETWORK = 'testnet';
+
+      const { connect, keyStores, WalletConnection } = nearApi;
+
+      const CONTRACT_ID = 'dev-1669950532868-83363016189684';
+
+      const lblAccount = document.querySelector('#idaccount');
+      const btnConnect = document.querySelector('#btnConnect');
+      const txtNumber = document.querySelector('#txtNumber');
+      const btnPlay = document.querySelector('#btnPlay');
+      const btnBuy = document.querySelector('#btnBuy');
+
+      const contract = {
+        get_opportunities: async () => await view(CONTRACT_ID, 'get_opportunities', {}),
+        //readKey: async () => await view(CONTRACT_ID, 'read', { key: dom.txtReadKey.value }),
+        play: async () => await change(CONTRACT_ID, 'play', { 'playNumber': txtNumber.value }, typeof gas !== 'undefined' ? gas : null),
+        buy_tickets: async () => await change(CONTRACT_ID, 'buy_tickets', {}, typeof gas !== 'undefined' ? gas : null, 0.1)
+      };
+
+      const near = await connect(config());
+      const wallet = new WalletConnection(near, `${NETWORK}-custom-prefix`); // supports logging in with different keys on the same domain
+
+      if (wallet.isSignedIn()) {
+        const accountId = wallet.getAccountId();
+        lblAccount.innerHTML = `Account: ${accountId}`;
+        btnConnect.innerHTML = `Log out`;
+        btnConnect.addEventListener('click', signOut);
+        btnPlay.addEventListener('click', contract.play);
+        btnBuy.addEventListener('click', contract.buy_tickets);
+      } else {
+        btnConnect.innerHTML = `Connect wallet`;
+        lblAccount.innerHTML = ``;
+        btnConnect.addEventListener('click', signIn);
+      }
+
+      function loadFunction(){
+        console.log("LoadingPage");
+        contract.get_opportunities();
+      }
+
+      function signIn() {
+        wallet.requestSignIn({
+          contractId: NETWORK === 'testnet' ? 'unv.testnet' : 'unv.near',
+          methodNames: []
+        });
+      }
+
+      function signOut() {
+        wallet.signOut();
+        btnConnect.innerHTML = 'Connect wallet';
+        window.location.reload();
+      }
+
+      async function change(contract, method, args, gas, amount) {
+        console.log('attempting to send signed transaction ...');
+        const response = await wallet.account().functionCall(contract, method, args, gas, amount);
+        console.log('response received.');
+
+        const { transaction_outcome: txo, status } = response;
+
+        console.log(`gas burned: ${txo.outcome.gas_burnt}`);
+        console.log(`tokens burned: ${txo.outcome.tokens_burnt}`);
+        console.log(`logs: \n${txo.outcome.logs}`);
+
+        const { SuccessValue: value } = status;
+        console.log(b64DecodeUnicode(value)); // see helper functions below
+      }
+
+      async function view(contract, method, args) {
+        const response = await wallet.account().viewFunction(contract, method, args);
+        console.log(response);
+      }
+
+      function config(network = NETWORK) {
+        return {
+          testnet: {
+            networkId: 'testnet',
+            keyStore: new keyStores.BrowserLocalStorageKeyStore(),
+            nodeUrl: 'https://rpc.testnet.near.org',
+            walletUrl: 'https://wallet.testnet.near.org',
+            helperUrl: 'https://helper.testnet.near.org',
+            explorerUrl: 'https://explorer.testnet.near.org'
+          },
+          mainnet: {
+            networkId: 'mainnet',
+            keyStore: new keyStores.BrowserLocalStorageKeyStore(),
+            nodeUrl: 'https://rpc.mainnet.near.org',
+            walletUrl: 'https://wallet.mainnet.near.org',
+            helperUrl: 'https://helper.mainnet.near.org',
+            explorerUrl: 'https://explorer.mainnet.near.org'
+          }
+        }[network];
+      }
+    })();
+</script>
+
+</html>

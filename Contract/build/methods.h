@@ -1,0 +1,6 @@
+DEFINE_NEAR_METHOD(buy_tickets)
+DEFINE_NEAR_METHOD(get_number)
+DEFINE_NEAR_METHOD(get_opportunities)
+DEFINE_NEAR_METHOD(get_ticket_price)
+DEFINE_NEAR_METHOD(play)
+DEFINE_NEAR_METHOD(set_lucky_number)
